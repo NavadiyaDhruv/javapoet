@@ -486,9 +486,6 @@ final class CodeWriter {
     return result;
   }
 
-  public void emitModifiers(Set<Modifier> modifiers) {
-  }
-
   // A makeshift multi-set implementation
   private static final class Multiset<T> {
     private final Map<T, Integer> map = new LinkedHashMap<>();
