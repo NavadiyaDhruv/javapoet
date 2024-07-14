@@ -52,7 +52,7 @@ public final class ParameterSpec {
 
   void emit(CodeWriter codeWriter, boolean varargs) throws IOException {
     codeWriter.emitAnnotations(annotations, true);
-    codeWriter.emitModifiers(modifiers);
+    codeWriter.emitModifiers(modifiers, Collections.emptySet());
     if (varargs) {
       TypeName.asArray(type).emit(codeWriter, true);
     } else {
@@ -91,8 +91,8 @@ public final class ParameterSpec {
     // Copying parameter annotations can be incorrect so we're deliberately not including them.
     // See https://github.com/square/javapoet/issues/482.
     return ParameterSpec.builder(type, name)
-        .addModifiers(element.getModifiers())
-        .build();
+            .addModifiers(element.getModifiers())
+            .build();
   }
 
   static List<ParameterSpec> parametersOf(ExecutableElement method) {
@@ -116,7 +116,7 @@ public final class ParameterSpec {
     checkNotNull(type, "type == null");
     checkArgument(isValidParameterName(name), "not a valid name: %s", name);
     return new Builder(type, name)
-        .addModifiers(modifiers);
+            .addModifiers(modifiers);
   }
 
   public static Builder builder(Type type, String name, Modifier... modifiers) {

@@ -44,8 +44,8 @@ public final class FieldSpec {
     this.annotations = Util.immutableList(builder.annotations);
     this.modifiers = Util.immutableSet(builder.modifiers);
     this.initializer = (builder.initializer == null)
-        ? CodeBlock.builder().build()
-        : builder.initializer;
+            ? CodeBlock.builder().build()
+            : builder.initializer;
   }
 
   public boolean hasModifier(Modifier modifier) {
@@ -58,10 +58,10 @@ public final class FieldSpec {
     codeWriter.emitModifiers(modifiers, implicitModifiers);
     codeWriter.emit("$T $L", type, name);
     if (!initializer.isEmpty()) {
-      codeWriter.emit(" = ");
-      codeWriter.emit(initializer);
+      codeWriter.emitAndIndent(" = ");
+      codeWriter.emit(initializer, false);
     }
-    codeWriter.emit(";\n");
+    codeWriter.emitAndIndent(";\n");
   }
 
   @Override public boolean equals(Object o) {
@@ -90,7 +90,7 @@ public final class FieldSpec {
     checkNotNull(type, "type == null");
     checkArgument(SourceVersion.isName(name), "not a valid name: %s", name);
     return new Builder(type, name)
-        .addModifiers(modifiers);
+            .addModifiers(modifiers);
   }
 
   public static Builder builder(Type type, String name, Modifier... modifiers) {

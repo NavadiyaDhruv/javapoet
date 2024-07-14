@@ -15,26 +15,13 @@
  */
 package com.squareup.javapoet;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.regex.Pattern;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Modifier;
+import java.io.IOException;
+import java.util.*;
+import java.util.regex.Pattern;
 
-import static com.squareup.javapoet.Util.checkArgument;
-import static com.squareup.javapoet.Util.checkNotNull;
-import static com.squareup.javapoet.Util.checkState;
-import static com.squareup.javapoet.Util.stringLiteralWithDoubleQuotes;
+import static com.squareup.javapoet.Util.*;
 import static java.lang.String.join;
 
 /**
@@ -75,21 +62,17 @@ final class CodeWriter {
   }
 
   CodeWriter(Appendable out, String indent, Set<String> staticImports, Set<String> alwaysQualify) {
-    this(out, indent, Collections.emptyMap(), staticImports, alwaysQualify);
+    this(new CodeWriterParameters(out, indent, Collections.emptyMap(), staticImports, alwaysQualify));
   }
 
-  CodeWriter(Appendable out,
-      String indent,
-      Map<String, ClassName> importedTypes,
-      Set<String> staticImports,
-      Set<String> alwaysQualify) {
-    this.out = new LineWrapper(out, indent, 100);
-    this.indent = checkNotNull(indent, "indent == null");
-    this.importedTypes = checkNotNull(importedTypes, "importedTypes == null");
-    this.staticImports = checkNotNull(staticImports, "staticImports == null");
-    this.alwaysQualify = checkNotNull(alwaysQualify, "alwaysQualify == null");
+  CodeWriter(CodeWriterParameters codeWriterParameters) {
+    this.out = new LineWrapper(codeWriterParameters.getOut(), codeWriterParameters.getIndent(), 100);
+    this.indent = checkNotNull(codeWriterParameters.getIndent(), "indent == null");
+    this.importedTypes = checkNotNull(codeWriterParameters.getImportedTypes(), "importedTypes == null");
+    this.staticImports = checkNotNull(codeWriterParameters.getStaticImports(), "staticImports == null");
+    this.alwaysQualify = checkNotNull(codeWriterParameters.getAlwaysQualify(), "alwaysQualify == null");
     this.staticImportClassNames = new LinkedHashSet<>();
-    for (String signature : staticImports) {
+    for (String signature : codeWriterParameters.getStaticImports()) {
       staticImportClassNames.add(signature.substring(0, signature.lastIndexOf('.')));
     }
   }
@@ -98,17 +81,9 @@ final class CodeWriter {
     return importedTypes;
   }
 
-  public CodeWriter indent() {
-    return indent(1);
-  }
-
   public CodeWriter indent(int levels) {
     indentLevel += levels;
     return this;
-  }
-
-  public CodeWriter unindent() {
-    return unindent(1);
   }
 
   public CodeWriter unindent(int levels) {
@@ -143,8 +118,8 @@ final class CodeWriter {
     trailingNewline = true; // Force the '//' prefix for the comment.
     comment = true;
     try {
-      emit(codeBlock);
-      emit("\n");
+      emit(codeBlock, false);
+      emitAndIndent("\n");
     } finally {
       comment = false;
     }
@@ -153,20 +128,20 @@ final class CodeWriter {
   public void emitJavadoc(CodeBlock javadocCodeBlock) throws IOException {
     if (javadocCodeBlock.isEmpty()) return;
 
-    emit("/**\n");
+    emitAndIndent("/**\n");
     javadoc = true;
     try {
       emit(javadocCodeBlock, true);
     } finally {
       javadoc = false;
     }
-    emit(" */\n");
+    emitAndIndent(" */\n");
   }
 
   public void emitAnnotations(List<AnnotationSpec> annotations, boolean inline) throws IOException {
     for (AnnotationSpec annotationSpec : annotations) {
       annotationSpec.emit(this, inline);
-      emit(inline ? " " : "\n");
+      emitAndIndent(inline ? " " : "\n");
     }
   }
 
@@ -175,17 +150,13 @@ final class CodeWriter {
    * be emitted.
    */
   public void emitModifiers(Set<Modifier> modifiers, Set<Modifier> implicitModifiers)
-      throws IOException {
+          throws IOException {
     if (modifiers.isEmpty()) return;
     for (Modifier modifier : EnumSet.copyOf(modifiers)) {
       if (implicitModifiers.contains(modifier)) continue;
       emitAndIndent(modifier.name().toLowerCase(Locale.US));
       emitAndIndent(" ");
     }
-  }
-
-  public void emitModifiers(Set<Modifier> modifiers) throws IOException {
-    emitModifiers(modifiers, Collections.emptySet());
   }
 
   /**
@@ -197,10 +168,10 @@ final class CodeWriter {
 
     typeVariables.forEach(typeVariable -> currentTypeVariables.add(typeVariable.name));
 
-    emit("<");
+    emitAndIndent("<");
     boolean firstTypeVariable = true;
     for (TypeVariableName typeVariable : typeVariables) {
-      if (!firstTypeVariable) emit(", ");
+      if (!firstTypeVariable) emitAndIndent(", ");
       emitAnnotations(typeVariable.annotations, true);
       emit("$L", typeVariable.name);
       boolean firstBound = true;
@@ -210,23 +181,15 @@ final class CodeWriter {
       }
       firstTypeVariable = false;
     }
-    emit(">");
+    emitAndIndent(">");
   }
 
   public void popTypeVariables(List<TypeVariableName> typeVariables) throws IOException {
     typeVariables.forEach(typeVariable -> currentTypeVariables.remove(typeVariable.name));
   }
 
-  public CodeWriter emit(String s) throws IOException {
-    return emitAndIndent(s);
-  }
-
   public CodeWriter emit(String format, Object... args) throws IOException {
-    return emit(CodeBlock.of(format, args));
-  }
-
-  public CodeWriter emit(CodeBlock codeBlock) throws IOException {
-    return emit(codeBlock, false);
+    return emit(CodeBlock.of(format, args), false);
   }
 
   public CodeWriter emit(CodeBlock codeBlock, boolean ensureTrailingNewline) throws IOException {
@@ -248,8 +211,8 @@ final class CodeWriter {
           String string = (String) codeBlock.args.get(a++);
           // Emit null as a literal null: no quotes.
           emitAndIndent(string != null
-              ? stringLiteralWithDoubleQuotes(string, indent)
-              : "null");
+                  ? stringLiteralWithDoubleQuotes(string, indent)
+                  : "null");
           break;
 
         case "$T":
@@ -273,11 +236,11 @@ final class CodeWriter {
           break;
 
         case "$>":
-          indent();
+          indent(1);
           break;
 
         case "$<":
-          unindent();
+          unindent(1);
           break;
 
         case "$[":
@@ -319,7 +282,7 @@ final class CodeWriter {
       }
     }
     if (ensureTrailingNewline && out.lastChar() != '\n') {
-      emit("\n");
+      emitAndIndent("\n");
     }
     return this;
   }
@@ -362,7 +325,7 @@ final class CodeWriter {
       annotationSpec.emit(this, true);
     } else if (o instanceof CodeBlock) {
       CodeBlock codeBlock = (CodeBlock) o;
-      emit(codeBlock);
+      emit(codeBlock, false);
     } else {
       emitAndIndent(String.valueOf(o));
     }
@@ -390,7 +353,7 @@ final class CodeWriter {
       if (resolved != null && Objects.equals(resolved.canonicalName, c.canonicalName)) {
         int suffixOffset = c.simpleNames().size() - 1;
         return join(".", className.simpleNames().subList(
-            suffixOffset, className.simpleNames().size()));
+                suffixOffset, className.simpleNames().size()));
       }
     }
 
@@ -521,6 +484,9 @@ final class CodeWriter {
     Map<String, ClassName> result = new LinkedHashMap<>(importableTypes);
     result.keySet().removeAll(referencedNames);
     return result;
+  }
+
+  public void emitModifiers(Set<Modifier> modifiers) {
   }
 
   // A makeshift multi-set implementation

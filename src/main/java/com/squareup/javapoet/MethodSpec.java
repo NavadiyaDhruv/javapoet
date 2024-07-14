@@ -58,9 +58,9 @@ public final class MethodSpec {
   private MethodSpec(Builder builder) {
     CodeBlock code = builder.code.build();
     checkArgument(code.isEmpty() || !builder.modifiers.contains(Modifier.ABSTRACT),
-        "abstract method %s cannot have code", builder.name);
+            "abstract method %s cannot have code", builder.name);
     checkArgument(!builder.varargs || lastParameterIsArray(builder.parameters),
-        "last parameter of varargs method %s must be an array", builder.name);
+            "last parameter of varargs method %s must be an array", builder.name);
 
     this.name = checkNotNull(builder.name, "name == null");
     this.javadoc = builder.javadoc.build();
@@ -77,18 +77,18 @@ public final class MethodSpec {
 
   private boolean lastParameterIsArray(List<ParameterSpec> parameters) {
     return !parameters.isEmpty()
-        && TypeName.asArray((parameters.get(parameters.size() - 1).type)) != null;
+            && TypeName.asArray((parameters.get(parameters.size() - 1).type)) != null;
   }
 
   void emit(CodeWriter codeWriter, String enclosingName, Set<Modifier> implicitModifiers)
-      throws IOException {
+          throws IOException {
     codeWriter.emitJavadoc(javadocWithParameters());
     codeWriter.emitAnnotations(annotations, false);
     codeWriter.emitModifiers(modifiers, implicitModifiers);
 
     if (!typeVariables.isEmpty()) {
       codeWriter.emitTypeVariables(typeVariables);
-      codeWriter.emit(" ");
+      codeWriter.emitAndIndent(" ");
     }
 
     if (isConstructor()) {
@@ -100,42 +100,42 @@ public final class MethodSpec {
     boolean firstParameter = true;
     for (Iterator<ParameterSpec> i = parameters.iterator(); i.hasNext(); ) {
       ParameterSpec parameter = i.next();
-      if (!firstParameter) codeWriter.emit(",").emitWrappingSpace();
+      if (!firstParameter) codeWriter.emitAndIndent(",").emitWrappingSpace();
       parameter.emit(codeWriter, !i.hasNext() && varargs);
       firstParameter = false;
     }
 
-    codeWriter.emit(")");
+    codeWriter.emitAndIndent(")");
 
     if (defaultValue != null && !defaultValue.isEmpty()) {
-      codeWriter.emit(" default ");
-      codeWriter.emit(defaultValue);
+      codeWriter.emitAndIndent(" default ");
+      codeWriter.emit(defaultValue, false);
     }
 
     if (!exceptions.isEmpty()) {
-      codeWriter.emitWrappingSpace().emit("throws");
+      codeWriter.emitWrappingSpace().emitAndIndent("throws");
       boolean firstException = true;
       for (TypeName exception : exceptions) {
-        if (!firstException) codeWriter.emit(",");
+        if (!firstException) codeWriter.emitAndIndent(",");
         codeWriter.emitWrappingSpace().emit("$T", exception);
         firstException = false;
       }
     }
 
     if (hasModifier(Modifier.ABSTRACT)) {
-      codeWriter.emit(";\n");
+      codeWriter.emitAndIndent(";\n");
     } else if (hasModifier(Modifier.NATIVE)) {
       // Code is allowed to support stuff like GWT JSNI.
-      codeWriter.emit(code);
-      codeWriter.emit(";\n");
+      codeWriter.emit(code, false);
+      codeWriter.emitAndIndent(";\n");
     } else {
-      codeWriter.emit(" {\n");
+      codeWriter.emitAndIndent(" {\n");
 
-      codeWriter.indent();
+      codeWriter.indent(1);
       codeWriter.emit(code, true);
-      codeWriter.unindent();
+      codeWriter.unindent(1);
 
-      codeWriter.emit("}\n");
+      codeWriter.emitAndIndent("}\n");
     }
     codeWriter.popTypeVariables(typeVariables);
   }
@@ -211,8 +211,8 @@ public final class MethodSpec {
 
     Set<Modifier> modifiers = method.getModifiers();
     if (modifiers.contains(Modifier.PRIVATE)
-        || modifiers.contains(Modifier.FINAL)
-        || modifiers.contains(Modifier.STATIC)) {
+            || modifiers.contains(Modifier.FINAL)
+            || modifiers.contains(Modifier.STATIC)) {
       throw new IllegalArgumentException("cannot override method with modifiers: " + modifiers);
     }
 
@@ -255,7 +255,7 @@ public final class MethodSpec {
    * parameters of the overridden method. Since JavaPoet 1.8 annotations must be added separately.
    */
   public static Builder overriding(
-      ExecutableElement method, DeclaredType enclosing, Types types) {
+          ExecutableElement method, DeclaredType enclosing, Types types) {
     ExecutableType executableType = (ExecutableType) types.asMemberOf(enclosing, method);
     List<? extends TypeMirror> resolvedParameterTypes = executableType.getParameterTypes();
     List<? extends TypeMirror> resolvedThrownTypes = executableType.getThrownTypes();
@@ -313,7 +313,7 @@ public final class MethodSpec {
     public Builder setName(String name) {
       checkNotNull(name, "name == null");
       checkArgument(name.equals(CONSTRUCTOR) || SourceVersion.isName(name),
-          "not a valid name: %s", name);
+              "not a valid name: %s", name);
       this.name = name;
       this.returnType = name.equals(CONSTRUCTOR) ? null : TypeName.VOID;
       return this;

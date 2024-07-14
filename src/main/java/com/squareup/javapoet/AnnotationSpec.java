@@ -90,7 +90,7 @@ public final class AnnotationSpec {
       String memberSeparator, List<CodeBlock> values) throws IOException {
     if (values.size() == 1) {
       codeWriter.indent(2);
-      codeWriter.emit(values.get(0));
+      codeWriter.emit(String.valueOf(values.get(0)));
       codeWriter.unindent(2);
       return;
     }
@@ -100,7 +100,7 @@ public final class AnnotationSpec {
     boolean first = true;
     for (CodeBlock codeBlock : values) {
       if (!first) codeWriter.emit(memberSeparator);
-      codeWriter.emit(codeBlock);
+      codeWriter.emit(String.valueOf(codeBlock));
       first = false;
     }
     codeWriter.unindent(2);
