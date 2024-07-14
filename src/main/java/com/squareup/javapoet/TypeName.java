@@ -280,6 +280,13 @@ public class TypeName {
     return get(type, new LinkedHashMap<>());
   }
 
+  protected static CodeWriter emitLeafType(TypeName type, CodeWriter out) throws IOException {
+    if (asArray(type) != null) {
+      return emitLeafType(asArray(type).componentType, out);
+    }
+    return type.emit(out);
+  }
+
   static TypeName get(Type type, Map<Type, TypeVariableName> map) {
     if (type instanceof Class<?>) {
       Class<?> classType = (Class<?>) type;
